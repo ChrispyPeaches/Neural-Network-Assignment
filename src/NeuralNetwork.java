@@ -5,36 +5,27 @@ import java.util.Collections;
 public class NeuralNetwork {
     /** L sizes */
     private final int[] LayerSizes;
-    /** eta */
-    private int LearningRate;
     /** W matrices */
     private ArrayList<float[][]> CurrentWeightMatrices = new ArrayList<>();
     /** b vectors */
     private ArrayList<float[]> CurrentBiasVectors = new ArrayList<>();
     private ArrayList<float[]> ActivationVectors = new ArrayList<>();
+    private ArrayList<Integer> DataSetIndicesOrder;
+    private ArrayList<float[]> InputVectors = new ArrayList<>();
 
     /* Back Propogation Variables */
+    /** eta */
+    private int LearningRate;
     private ArrayList<int[]> CorrectOutputVectors = new ArrayList<>();
-    private ArrayList<float[][]> WeightGradientSumMatrix = new ArrayList<>();
-    private ArrayList<float[]> BiasGradientSumMatrix = new ArrayList<>();
-    private ArrayList<float[][]> CurrentWeightGradientMatrix = new ArrayList<>();
-    private ArrayList<float[]> CurrentBiasGradientMatrix = new ArrayList<>();
-    private ArrayList<Integer> DataSetIndicesOrder;
+    private ArrayList<float[][]> WeightGradientSumMatrices = new ArrayList<>();
+    private ArrayList<float[]> BiasGradientSumVectors = new ArrayList<>();
+    private ArrayList<float[][]> CurrentWeightGradientMatrices = new ArrayList<>();
+    private ArrayList<float[]> CurrentBiasGradientVectors = new ArrayList<>();
 
     public NeuralNetwork(
             int[] layerSizes,
             int dataSetSize) {
         LayerSizes = layerSizes;
-
-        // Build weight matrices, bias vectors, and activation vector lists
-        UsePregeneratedWeights();
-        for (int level = 0; level < LayerSizes.length; level++) {
-            if (level == 0) {
-                ActivationVectors.add(new float[]{0,1,0,1});
-            } else {
-                ActivationVectors.add(new float[LayerSizes[level]]);
-            }
-        }
 
         // CurrentInputVector = new float[LayerSizes[0]];
         DataSetIndicesOrder = RandomizeDatasetIndicesOrder(dataSetSize);
@@ -49,27 +40,77 @@ public class NeuralNetwork {
         LearningRate = learningRate;
         //int numberOfMiniBatches = miniBatchSize / DataSetIndicesOrder.size();
         int numberOfMiniBatches = 1;
+        UsePregeneratedWeights();
 
+
+        // Set minibatch's input & correct output vectors
+        InputVectors.add(new float[]{0,1,0,1});
+        InputVectors.add(new float[]{1,0,1,0});
+        CorrectOutputVectors.add(new int[] {0, 1});
+        CorrectOutputVectors.add(new int[] {1, 0});
+
+        // Minibatch loop
         for (int miniBatchIndex = 0; miniBatchIndex < numberOfMiniBatches; miniBatchIndex++) {
-            // Set minibatch's correct output vectors
-            CorrectOutputVectors.add(new int[] {0, 1});
+            // Reset gradients sums
+            BiasGradientSumVectors = new ArrayList<>();
+            WeightGradientSumMatrices = new ArrayList<>();
 
-            // Forward Pass
+            // Create data structure for gradient sums
             for (int level = 1; level < LayerSizes.length; level++) {
-                //GenerateRandomWeights(level);
-
-                // Setup for back propagation
-                CurrentBiasGradientMatrix.add(new float[LayerSizes[level]]);
-                CurrentWeightGradientMatrix.add(new float[LayerSizes[level]][LayerSizes[level - 1]]);
-
-                // Calculate activation vectors
-                calculateSigmoid(level);
+                BiasGradientSumVectors.add(new float[LayerSizes[level]]);
+                WeightGradientSumMatrices.add(new float[LayerSizes[level]][LayerSizes[level - 1]]);
             }
 
-            // Back Propagation
-            for (int level = LayerSizes.length - 1; level > 0; level--) {
-                calculateOutputError(miniBatchIndex, level);
+            for (int trainingCaseIndex = 0; trainingCaseIndex < miniBatchSize; trainingCaseIndex++) {
+                // Reset activation vectors & current gradients
+                ActivationVectors = new ArrayList<>();
+                CurrentBiasGradientVectors = new ArrayList<>();
+                CurrentWeightGradientMatrices = new ArrayList<>();
+
+                // Create data structure for activation vectors & gradients
+                for (int level = 0; level < LayerSizes.length; level++) {
+                    if (level == 0) {
+                        ActivationVectors.add(InputVectors.get(trainingCaseIndex));
+                    } else {
+                        ActivationVectors.add(new float[LayerSizes[level]]);
+                        CurrentBiasGradientVectors.add(new float[LayerSizes[level]]);
+                        CurrentWeightGradientMatrices.add(new float[LayerSizes[level]][LayerSizes[level - 1]]);
+                    }
+                }
+
+                // Forward Pass
+                for (int level = 1; level < LayerSizes.length; level++) {
+                    //GenerateRandomWeights(level);
+
+                    // Calculate activation vectors
+                    calculateSigmoid(level);
+                }
+
+                // Back Propagation
+                for (int level = LayerSizes.length - 1; level > 0; level--) {
+                    calculateOutputError(trainingCaseIndex, level);
+
+                    // Build gradient sums
+                    SetBiasVector(
+                            BiasGradientSumVectors,
+                            level,
+                            addTwoVectors(
+                                    GetBiasVector(BiasGradientSumVectors, level),
+                                    GetBiasVector(CurrentBiasGradientVectors, level)));
+
+                    SetWeightMatrix(
+                            WeightGradientSumMatrices,
+                            level,
+                            addTwoMatrices(
+                                    GetWeightMatrix(WeightGradientSumMatrices, level),
+                                    GetWeightMatrix(CurrentWeightGradientMatrices, level)));
+
+                }
             }
+
+            // Gradient Descent
+
+
         }
     }
 
@@ -100,7 +141,7 @@ public class NeuralNetwork {
      * <p>Stores the result in ActivationVectors </p>
      * @throws UnsupportedOperationException If the dot product is not possible
      */
-    private float dotProduct (float[] vector1, float[] vector2) throws UnsupportedOperationException {
+    private float calculateDotProduct(float[] vector1, float[] vector2) throws UnsupportedOperationException {
         // Error checking
         // Validate vector1 column is equal to vector2 row count
         if (vector1.length != vector2.length) {
@@ -117,20 +158,61 @@ public class NeuralNetwork {
         return dotProduct;
     }
 
-    private void calculateOutputError(int miniBatchIndex, int level) {
+    /**
+     * Adds matrixA & matrixB by deep copying matrixA, then adding matrixB to the resulting array
+     * @param matrixA The first matrix to add
+     * @param matrixB The second matrix to add
+     * @return matrixA + matrixB
+     */
+    private float[][] addTwoMatrices(float[][] matrixA, float[][] matrixB) {
+        // Validate matrixA & matrixB are the same size
+        if (matrixA.length != matrixB.length ||
+            matrixA[0].length != matrixB[0].length) {
+            throw new UnsupportedOperationException();
+        }
+        float[][] resultingMatrix = matrixA.clone();
+
+        for (int j = 0; j < matrixA.length; j++) {
+            for (int k = 0; k < matrixA[0].length; k++) {
+                resultingMatrix[j][k] += matrixB[j][k];
+            }
+        }
+        return resultingMatrix;
+    }
+
+    /**
+     * Adds vectorA & vectorB by deep copying vectorA, then adding vectorB to the resulting array
+     * @param vectorA The first vector to add
+     * @param vectorB The second vector to add
+     * @return vectorA + vectorB
+     */
+    private float[] addTwoVectors(float[] vectorA, float[] vectorB) {
+        // Validate vectorA & vectorB are the same size
+        if (vectorA.length != vectorB.length) {
+            throw new UnsupportedOperationException();
+        }
+        float[] resultingVector = vectorA.clone();
+
+        for (int j = 0; j < vectorA.length; j++) {
+            resultingVector[j] += vectorB[j];
+        }
+        return resultingVector;
+    }
+
+    private void calculateOutputError(int trainingCaseIndex, int level) {
         if (level > LayerSizes.length - 1) {
             throw new InvalidParameterException();
         }
 
-        for (int neuronIndex = 0; neuronIndex < GetBiasVector(CurrentBiasGradientMatrix, level).length; neuronIndex++) {
+        for (int neuronIndex = 0; neuronIndex < GetBiasVector(CurrentBiasGradientVectors, level).length; neuronIndex++) {
             // Calculate Bias gradient
             // Final layer output error calculation
             if (level == LayerSizes.length - 1) {
                 // Calculate Bias gradient using back propagation Equation 1
                 // where j = neuronIndex, L = level
                 // (a - y) * a * (1 - a)
-                GetBiasVector(CurrentBiasGradientMatrix, level)[neuronIndex] =
-                        (GetOutputVector(level)[neuronIndex] - CorrectOutputVectors.get(miniBatchIndex)[neuronIndex])
+                GetBiasVector(CurrentBiasGradientVectors, level)[neuronIndex] =
+                        (GetOutputVector(level)[neuronIndex] - CorrectOutputVectors.get(trainingCaseIndex)[neuronIndex])
                         * GetOutputVector(level)[neuronIndex]
                         * (1 - GetOutputVector(level)[neuronIndex]);
             }
@@ -139,13 +221,13 @@ public class NeuralNetwork {
                 // Calculate Bias gradient using back propagation Equation 2
                 // where k = neuronIndex, l = level
                     // W_(nextLevel) * Delta_(nextLevel)
-                    float weightDotErrorForNextLevel = dotProduct(
+                    float weightDotErrorForNextLevel = calculateDotProduct(
                             GetWeightColumnVector(CurrentWeightMatrices,level + 1, neuronIndex),
-                            GetBiasVector(CurrentBiasGradientMatrix, level + 1));
+                            GetBiasVector(CurrentBiasGradientVectors, level + 1));
 
                     //
                     // weightDotErrorForNextLevel * a_level * (1 - a_level)
-                    GetBiasVector(CurrentBiasGradientMatrix, level)[neuronIndex] =
+                    GetBiasVector(CurrentBiasGradientVectors, level)[neuronIndex] =
                             weightDotErrorForNextLevel
                             * GetOutputVector(level)[neuronIndex]
                             * (1 - GetOutputVector(level)[neuronIndex]);
@@ -154,9 +236,9 @@ public class NeuralNetwork {
             // Calculate Weight Gradient
             // a_(lastLevel) * Delta_(level)
             for (int activationIndex = 0; activationIndex < GetOutputVector(level - 1).length; activationIndex++) {
-                GetWeightRowVector(CurrentWeightGradientMatrix, level, neuronIndex)[activationIndex] =
+                GetWeightRowVector(CurrentWeightGradientMatrices, level, neuronIndex)[activationIndex] =
                         GetOutputVector(level - 1)[activationIndex]
-                        * GetBiasVector(CurrentBiasGradientMatrix, level)[neuronIndex];
+                        * GetBiasVector(CurrentBiasGradientVectors, level)[neuronIndex];
             }
         }
 
@@ -173,7 +255,7 @@ public class NeuralNetwork {
         for (int neuronIndex = 0; neuronIndex < GetWeightMatrix(CurrentWeightMatrices, level).length; neuronIndex++) {
             // W * X
             GetOutputVector(level)[neuronIndex] =
-                    dotProduct(GetWeightRowVector(CurrentWeightMatrices, level, neuronIndex), GetInputVector(level));
+                    calculateDotProduct(GetWeightRowVector(CurrentWeightMatrices, level, neuronIndex), GetInputVector(level));
             // + b
             GetOutputVector(level)[neuronIndex] += GetBiasVector(CurrentBiasVectors, level)[neuronIndex];
         }
@@ -209,19 +291,27 @@ public class NeuralNetwork {
         return weightMatrix.get(level - 1);
     }
 
-    private float[] GetWeightRowVector(ArrayList<float[][]> weightMatrix, int level, int neuron) {
-        return weightMatrix.get(level - 1)[neuron];
+    private void SetWeightMatrix(ArrayList<float[][]> weightMatrices, int level, float[][] newMatrix) {
+        weightMatrices.set(level - 1, newMatrix);
     }
 
-    private float[] GetWeightColumnVector(ArrayList<float[][]> weightMatrix, int level, int columnNumber) {
-        var columnVector = new float[GetWeightMatrix(weightMatrix, level).length];
-        for (int rowIndex = 0; rowIndex < GetWeightMatrix(weightMatrix, level).length; rowIndex++) {
-            columnVector[rowIndex] = GetWeightMatrix(weightMatrix, level)[rowIndex][columnNumber];
+    private float[] GetWeightRowVector(ArrayList<float[][]> weightMatrices, int level, int neuron) {
+        return weightMatrices.get(level - 1)[neuron];
+    }
+
+    private float[] GetWeightColumnVector(ArrayList<float[][]> weightMatrices, int level, int columnNumber) {
+        var columnVector = new float[GetWeightMatrix(weightMatrices, level).length];
+        for (int rowIndex = 0; rowIndex < GetWeightMatrix(weightMatrices, level).length; rowIndex++) {
+            columnVector[rowIndex] = GetWeightMatrix(weightMatrices, level)[rowIndex][columnNumber];
         }
         return columnVector;
     }
 
-    private float[] GetBiasVector(ArrayList<float[]> biasMatrix, int level) {
-        return biasMatrix.get(level - 1);
+    private float[] GetBiasVector(ArrayList<float[]> biasVectors, int level) {
+        return biasVectors.get(level - 1);
+    }
+
+    private void SetBiasVector(ArrayList<float[]> biasVectors, int level, float[] newVector) {
+        biasVectors.set(level - 1, newVector);
     }
 }
