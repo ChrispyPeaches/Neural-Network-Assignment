@@ -17,7 +17,7 @@ public class Main {
     /** Input, a, and y vectors for the current training set */
     private ArrayList<float[]> CurrentActivationVectors = new ArrayList<>();
     /** Used to gather output activations for debugging output */
-    private ArrayList<float[]> OutputActivationVectors = new ArrayList<>();
+    private ArrayList<ArrayList<float[]>> ActivationVectorsForMinibatch = new ArrayList<>();
     /** The order that the dataset will be broken into mini batches */
     private final ArrayList<Integer> DataSetIndicesOrder;
     /** The input vectors for the current mini batch */
@@ -25,7 +25,7 @@ public class Main {
 
     //region Back Propagation Variables
 
-    /** eta */
+    /** eta - The rate at which the network will learn*/
     private int LearningRate;
     /** The expected output vectors for the current mini batch */
     private ArrayList<int[]> CorrectOutputVectors = new ArrayList<>();
@@ -96,7 +96,7 @@ public class Main {
                 // Reset necessary variables
                 BiasGradientSumVectors = new ArrayList<>();
                 WeightGradientSumMatrices = new ArrayList<>();
-                OutputActivationVectors = new ArrayList<>();
+                ActivationVectorsForMinibatch = new ArrayList<>();
 
                 // Create data structure for gradient sums
                 for (int level = 1; level < LayerSizes.length; level++) {
@@ -131,8 +131,9 @@ public class Main {
                         CalculateSigmoid(level);
                     }
 
-                    // Collect the output activation vector
-                    OutputActivationVectors.add(CurrentActivationVectors.get(CurrentActivationVectors.size() - 1));
+                    // Add the activation vector to the collector for logging
+                    ActivationVectorsForMinibatch.add(CurrentActivationVectors);
+
 
                     // Back Propagation
                     for (int level = LayerSizes.length - 1; level > 0; level--) {
@@ -159,8 +160,8 @@ public class Main {
                 // Perform Gradient Descent
                 PerformGradientDescent(miniBatchSize);
 
+                // Print weights and biases for each mini batch and the activations for each training case
                 for (int levelIndex = 1; levelIndex < LayerSizes.length; levelIndex++) {
-                    // Print current matrix levels
                     System.out.println("L" + (levelIndex - 1) + " -> " + "L" + levelIndex + " --------------");
                     System.out.print("\n");
                     System.out.println("Resulting Weights:");
@@ -168,20 +169,16 @@ public class Main {
                     System.out.print("\n");
                     System.out.println("Resulting Biases:");
                     PrintVector(GetBiasVector(CurrentBiasVectors, levelIndex));
+                    System.out.print("\n");
+                    System.out.println("Resulting Activations:");
+                    for (int trainCaseIndex = 0; trainCaseIndex < ActivationVectorsForMinibatch.size(); trainCaseIndex++) {
+                        System.out.println("Training Case " + (trainCaseIndex + 1) + ":");
+                        PrintVector(ActivationVectorsForMinibatch.get(trainCaseIndex).get(levelIndex));
+                        System.out.print("\n");
+                    }
                     System.out.println("----------------------");
                     System.out.print("\n");
                 }
-                System.out.println("Resulting Activations:");
-                for (int i = 0; i < OutputActivationVectors.size(); i++) {
-                    System.out.println("Training Case " + (i + 1) + ":");
-                    System.out.print("Input: ");
-                    PrintVector(InputVectors.get(i));
-                    System.out.print("Output: ");
-                    PrintVector(OutputActivationVectors.get(i));
-                    System.out.print("\n");
-                }
-                System.out.println("----------------------");
-                System.out.print("\n");
             }
         }
     }
