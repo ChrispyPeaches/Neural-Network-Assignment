@@ -8,7 +8,8 @@ public class Main {
      */
     public static void main(String[] args) throws IOException {
         IOHelper.SetOutputToFile();
-        NeuralEngine main = new NeuralEngine(new int[]{4, 3, 2}, 4);
-        main.TrainNetwork(10, 2, 6);
+
+        NeuralEngine main = new NeuralEngine(new int[]{784, 15, 10}, 60000);
+        main.TrainNetwork(3, 10, 1);
     }
 }

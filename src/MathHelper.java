@@ -17,8 +17,6 @@ public class MathHelper {
         return indices;
     }
 
-
-
     //region Matrix & Vector Operations
 
     /**

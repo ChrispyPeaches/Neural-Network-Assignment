@@ -1,14 +1,15 @@
 import java.security.InvalidParameterException;
 import java.util.ArrayList;
+import java.util.Random;
 
 public class NeuralEngine {
     //region Class & instance variables
     /** L sizes */
     private final int[] LayerSizes;
     /** W matrices for the current mini batch */
-    private final ArrayList<float[][]> CurrentWeightMatrices = new ArrayList<>();
+    private ArrayList<float[][]> CurrentWeightMatrices = new ArrayList<>();
     /** b vectors for the current mini batch */
-    private final ArrayList<float[]> CurrentBiasVectors = new ArrayList<>();
+    private ArrayList<float[]> CurrentBiasVectors = new ArrayList<>();
     /** Input, a, and y vectors for the current training set */
     private ArrayList<float[]> CurrentActivationVectors = new ArrayList<>();
     /** Used to gather output activations for debugging output */
@@ -59,7 +60,7 @@ public class NeuralEngine {
         // Initialize variables
         LearningRate = learningRate;
         int numberOfMiniBatches = DataSetIndicesOrder.size() / miniBatchSize;
-        UsePregeneratedWeightsAndBiases();
+        GenerateRandomWeightsAndBiases();
 
         // Epoch loop
         for (int epochIndex = 0; epochIndex < numberOfEpochs; epochIndex++) {
@@ -80,7 +81,9 @@ public class NeuralEngine {
                 }
 
                 // Gather training data
-                SetHardCodedTrainingData(miniBatchIndex);
+                int startingDataIndex = (miniBatchIndex) * miniBatchSize;
+                int endingDataIndex = startingDataIndex + miniBatchSize;
+                IOHelper.ParseCsv(InputVectors, CorrectOutputVectors, DataSetIndicesOrder.subList(startingDataIndex,endingDataIndex));
 
                 // Training case loop
                 for (int trainingCaseIndex = 0; trainingCaseIndex < miniBatchSize; trainingCaseIndex++) {
@@ -157,7 +160,6 @@ public class NeuralEngine {
             }
         }
     }
-
 
     //region Neural network engine helpers
 
@@ -278,7 +280,6 @@ public class NeuralEngine {
 
     //endregion
 
-
     //region Data helpers
 
     /**
@@ -320,18 +321,41 @@ public class NeuralEngine {
         CurrentBiasVectors.add(new float[]{0.16f, -0.46f});
     }
 
-    /**
-     * Placeholder to be used for implementing true stochastic gradient descent
-     */
-    private void GenerateRandomWeights(){
+
+    private void GenerateRandomWeightsAndBiases(){
+        CurrentWeightMatrices = new ArrayList<>();
+        CurrentBiasVectors = new ArrayList<>();
+        var r = new Random();
+        long seed = r.nextLong();
+        System.out.println("Seed: " + seed);
+        r.setSeed(seed);
+
+        for (int inputLevel = 0; inputLevel < LayerSizes.length - 1; inputLevel++) {
+            // Generate Weights
+            float[][] weights = new float[LayerSizes[inputLevel + 1]][LayerSizes[inputLevel]];
+            for (var matrixRow : weights) {
+                for (int rowIndex = 0; rowIndex < matrixRow.length; rowIndex++) {
+                    matrixRow[rowIndex] = r.nextFloat(-0.9999999f, 1);
+                }
+            }
+            CurrentWeightMatrices.add(weights);
+
+            // Generate Biases
+            float[] biases = new float[LayerSizes[inputLevel + 1]];
+            for (int biasIndex = 0; biasIndex < biases.length; biasIndex++) {
+                biases[biasIndex] = r.nextFloat(-0.9999999f, 1);
+            }
+            CurrentBiasVectors.add(biases);
+        }
+        var a = "break";
     }
 
-    private static float[] ConvertDigitToOneHotVector(int digit) {
+    public static int[] ConvertDigitToOneHotVector(int digit) {
         if (digit < 0 || digit > 9) {
             throw new InvalidParameterException();
         }
 
-        float[] oneHotVector = new float[10];
+        int[] oneHotVector = new int[10];
         oneHotVector[digit] = 1;
 
         return oneHotVector;
