@@ -13,17 +13,17 @@ public class NeuralEngine {
     /** Input, a, and y vectors for the current training set */
     private ArrayList<float[]> CurrentActivationVectors = new ArrayList<>();
     /** Used to gather output activations for debugging output */
-    private ArrayList<ArrayList<float[]>> ActivationVectorsForMinibatch = new ArrayList<>();
+    private ArrayList<float[]> OutputVectorsForMinibatch = new ArrayList<>();
     /** The order that the dataset will be broken into mini batches */
     private final ArrayList<Integer> DataSetIndicesOrder;
     /** The input vectors for the current mini batch */
-    private ArrayList<float[]> CurrentInputVectors = new ArrayList<>();
+    private ArrayList<float[]> InputVectors = new ArrayList<>();
 
     private Dictionary<Integer, OutputResult> OutputResults = new Hashtable<>();
 
     public static class OutputResult {
-        public int correctOutputs;
-        public int totalExpectedOutputs;
+        public int correctOutputs = 0;
+        public int totalExpectedOutputs = 0;
 
         @Override
         public String toString() {
@@ -78,10 +78,6 @@ public class NeuralEngine {
             OutputResults.put(i, new OutputResult());
         }
 
-        // Gather training data
-        IOHelper.ParseCsv(CurrentInputVectors, CorrectOutputVectors, DataSetIndicesOrder);
-        
-
         // Epoch loop
         for (int epochIndex = 0; epochIndex < numberOfEpochs; epochIndex++) {
             System.out.println("Epoch " + (epochIndex + 1) + ":");
@@ -90,13 +86,20 @@ public class NeuralEngine {
                 // Reset necessary variables
                 BiasGradientSumVectors = new ArrayList<>();
                 WeightGradientSumMatrices = new ArrayList<>();
-                ActivationVectorsForMinibatch = new ArrayList<>();
+                OutputVectorsForMinibatch = new ArrayList<>();
+                InputVectors = new ArrayList<>();
+                CorrectOutputVectors = new ArrayList<>();
 
                 // Create data structure for gradient sums
                 for (int level = 1; level < LayerSizes.length; level++) {
                     BiasGradientSumVectors.add(new float[LayerSizes[level]]);
                     WeightGradientSumMatrices.add(new float[LayerSizes[level]][LayerSizes[level - 1]]);
                 }
+
+                // Gather training data
+                int startingDataIndex = (miniBatchIndex) * miniBatchSize;
+                int endingDataIndex = startingDataIndex + miniBatchSize;
+                IOHelper.ParseCsv(InputVectors, CorrectOutputVectors, DataSetIndicesOrder.subList(startingDataIndex,endingDataIndex));
 
                 // Training case loop
                 for (int trainingCaseIndex = 0; trainingCaseIndex < miniBatchSize; trainingCaseIndex++) {
@@ -108,7 +111,7 @@ public class NeuralEngine {
                     // Create data structure for activation vectors & gradients
                     for (int level = 0; level < LayerSizes.length; level++) {
                         if (level == 0) {
-                            CurrentActivationVectors.add(CurrentInputVectors.get(trainingCaseIndex));
+                            CurrentActivationVectors.add(InputVectors.get(trainingCaseIndex));
                         } else {
                             CurrentActivationVectors.add(new float[LayerSizes[level]]);
                             CurrentBiasGradientVectors.add(new float[LayerSizes[level]]);
@@ -123,7 +126,7 @@ public class NeuralEngine {
                     }
 
                     // Add the activation vector to the collector for logging
-                    ActivationVectorsForMinibatch.add(CurrentActivationVectors);
+                    OutputVectorsForMinibatch.add(CurrentActivationVectors.get(LayerSizes.length - 1));
 
                     // Back Propagation
                     for (int level = LayerSizes.length - 1; level > 0; level--) {
@@ -151,11 +154,8 @@ public class NeuralEngine {
                 PerformGradientDescent(miniBatchSize);
 
                 // Track output accuracy
-                for (int trainCaseIndex = 0; trainCaseIndex < ActivationVectorsForMinibatch.size(); trainCaseIndex++) {
-
-                    int output = ConvertOneHotVectorToDigit(ActivationVectorsForMinibatch
-                            .get(trainCaseIndex)
-                            .get(LayerSizes.length - 1));
+                for (int trainCaseIndex = 0; trainCaseIndex < OutputVectorsForMinibatch.size(); trainCaseIndex++) {
+                    int output = ConvertOneHotVectorToDigit(OutputVectorsForMinibatch.get(trainCaseIndex));
                     int expectedOutput = ConvertOneHotVectorToDigit(CorrectOutputVectors.get(trainCaseIndex));
                     OutputResult a = OutputResults.get(expectedOutput);
                     if (output == expectedOutput) {
@@ -301,18 +301,18 @@ public class NeuralEngine {
      * @param miniBatchIndex Selects which input vector and expected output vectors to use
      */
     private void SetHardCodedTrainingData(int miniBatchIndex) {
-        CurrentInputVectors = new ArrayList<>();
+        InputVectors = new ArrayList<>();
         CorrectOutputVectors = new ArrayList<>();
         // Set minibatch's input & correct output vectors
         if (miniBatchIndex == 0) {
-            CurrentInputVectors.add(new float[]{0,1,0,1});
+            InputVectors.add(new float[]{0,1,0,1});
             CorrectOutputVectors.add(new float[] {0, 1});
-            CurrentInputVectors.add(new float[]{1,0,1,0});
+            InputVectors.add(new float[]{1,0,1,0});
             CorrectOutputVectors.add(new float[] {1, 0});
         } else if (miniBatchIndex == 1) {
-            CurrentInputVectors.add(new float[]{0,0,1,1});
+            InputVectors.add(new float[]{0,0,1,1});
             CorrectOutputVectors.add(new float[] {0, 1});
-            CurrentInputVectors.add(new float[]{1,1,0,0});
+            InputVectors.add(new float[]{1,1,0,0});
             CorrectOutputVectors.add(new float[] {1, 0});
         }
     }

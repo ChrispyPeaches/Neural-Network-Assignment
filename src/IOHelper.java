@@ -13,7 +13,7 @@ public class IOHelper {
      * @throws IOException If there's an issue creating the output file
      */
     public static void SetOutputToFile() throws IOException {
-        PrintStream file = new PrintStream("output-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-hh-mm-ss")) + ".txt");
+        PrintStream file = new PrintStream("output-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd|hh-mm-ss")) + ".txt");
         System.setOut(file);
     }
 
