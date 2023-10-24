@@ -7,9 +7,9 @@ public class NeuralEngine {
     /** L sizes */
     private final int[] LayerSizes;
     /** W matrices for the current mini batch */
-    private ArrayList<float[][]> CurrentWeightMatrices = new ArrayList<>();
+    public ArrayList<float[][]> CurrentWeightMatrices = new ArrayList<>();
     /** b vectors for the current mini batch */
-    private ArrayList<float[]> CurrentBiasVectors = new ArrayList<>();
+    public ArrayList<float[]> CurrentBiasVectors = new ArrayList<>();
     /** Input, a, and y vectors for the current training set */
     private ArrayList<float[]> CurrentActivationVectors = new ArrayList<>();
     /** Used to gather output activations for debugging output */
@@ -21,6 +21,8 @@ public class NeuralEngine {
 
     private Dictionary<Integer, OutputResult> OutputResults = new Hashtable<>();
 
+    public Long Seed;
+
     public static class OutputResult {
         public int correctOutputs = 0;
         public int totalExpectedOutputs = 0;
@@ -30,6 +32,9 @@ public class NeuralEngine {
             return correctOutputs + "/" + totalExpectedOutputs;
         }
     }
+
+    public int MiniBatchSize;
+    public int NumberofMiniBatches;
 
     //region Back Propagation Variables
 
@@ -50,128 +55,160 @@ public class NeuralEngine {
 
     //endregion
 
+    /**
+     *
+     * @param layerSizes
+     * @param dataSetSize
+     * @param miniBatchSize The size for each mini batch
+     */
     public NeuralEngine(
             int[] layerSizes,
-            int dataSetSize) {
+            int dataSetSize,
+            int miniBatchSize) {
         LayerSizes = layerSizes;
         DataSetIndicesOrder = MathHelper.RandomizeDatasetIndicesOrder(dataSetSize);
+        MiniBatchSize = miniBatchSize;
+        NumberofMiniBatches = DataSetIndicesOrder.size() / MiniBatchSize;
+        Seed = null;
     }
 
     /**
      * Train the neural network
      * @param learningRate the learning rate for gradient descent
-     * @param miniBatchSize The size for each mini batch
      * @param numberOfEpochs The amount of epochs to perform
      */
-    public void TrainNetwork(int learningRate, int miniBatchSize, int numberOfEpochs) throws IOException {
-        // Verify minibatches are a valid size
-        if (DataSetIndicesOrder.size() % miniBatchSize != 0) {
-            throw new IllegalArgumentException();
-        }
+    public void TrainNetwork(int learningRate, int numberOfEpochs) throws IOException {
+        CheckMinibatchSize(MiniBatchSize);
 
         // Initialize variables
+        Seed = null;
         LearningRate = learningRate;
-        int numberOfMiniBatches = DataSetIndicesOrder.size() / miniBatchSize;
         GenerateRandomWeightsAndBiases();
+
+        // Epoch loop
+        for (int epochIndex = 0; epochIndex < numberOfEpochs; epochIndex++) {
+            System.out.println("Epoch " + (epochIndex + 1) + ":");
+            OutputResults = new Hashtable<>();
+            for (int i = 0; i < LayerSizes[LayerSizes.length - 1]; i++) {
+                OutputResults.put(i, new OutputResult());
+            }
+
+            // Minibatch loop
+            for (int miniBatchIndex = 0; miniBatchIndex < NumberofMiniBatches; miniBatchIndex++) {
+                MiniBatchLoop(miniBatchIndex, true);
+            }
+
+            PrintAccuracyResults();
+        }
+    }
+
+    /**
+     * Note: Assumes there are already weights and biases initialized
+     */
+    public void RunNetwork() throws IOException {
+        CheckMinibatchSize(MiniBatchSize);
+
         OutputResults = new Hashtable<>();
         for (int i = 0; i < LayerSizes[LayerSizes.length - 1]; i++) {
             OutputResults.put(i, new OutputResult());
         }
 
-        // Epoch loop
-        for (int epochIndex = 0; epochIndex < numberOfEpochs; epochIndex++) {
-            System.out.println("Epoch " + (epochIndex + 1) + ":");
-            // Minibatch loop
-            for (int miniBatchIndex = 0; miniBatchIndex < numberOfMiniBatches; miniBatchIndex++) {
-                // Reset necessary variables
-                BiasGradientSumVectors = new ArrayList<>();
-                WeightGradientSumMatrices = new ArrayList<>();
-                OutputVectorsForMinibatch = new ArrayList<>();
-                InputVectors = new ArrayList<>();
-                CorrectOutputVectors = new ArrayList<>();
+        // Process mini batch
+        for (int miniBatchIndex = 0; miniBatchIndex < NumberofMiniBatches; miniBatchIndex++) {
+            MiniBatchLoop(miniBatchIndex, false);
+        }
+    }
 
-                // Create data structure for gradient sums
-                for (int level = 1; level < LayerSizes.length; level++) {
-                    BiasGradientSumVectors.add(new float[LayerSizes[level]]);
-                    WeightGradientSumMatrices.add(new float[LayerSizes[level]][LayerSizes[level - 1]]);
-                }
+    private void MiniBatchLoop(int miniBatchIndex, boolean enableGradientDescent) throws IOException {
+        // Reset necessary variables
+        OutputVectorsForMinibatch = new ArrayList<>();
+        InputVectors = new ArrayList<>();
+        CorrectOutputVectors = new ArrayList<>();
 
-                // Gather training data
-                int startingDataIndex = (miniBatchIndex) * miniBatchSize;
-                int endingDataIndex = startingDataIndex + miniBatchSize;
-                IOHelper.ParseCsv(InputVectors, CorrectOutputVectors, DataSetIndicesOrder.subList(startingDataIndex,endingDataIndex));
+        if (enableGradientDescent) {
+            BiasGradientSumVectors = new ArrayList<>();
+            WeightGradientSumMatrices = new ArrayList<>();
 
-                // Training case loop
-                for (int trainingCaseIndex = 0; trainingCaseIndex < miniBatchSize; trainingCaseIndex++) {
-                    // Reset activation vectors & current gradients
-                    CurrentActivationVectors = new ArrayList<>();
-                    CurrentBiasGradientVectors = new ArrayList<>();
-                    CurrentWeightGradientMatrices = new ArrayList<>();
+            // Create data structure for gradient sums
+            for (int level = 1; level < LayerSizes.length; level++) {
+                BiasGradientSumVectors.add(new float[LayerSizes[level]]);
+                WeightGradientSumMatrices.add(new float[LayerSizes[level]][LayerSizes[level - 1]]);
+            }
+        }
 
-                    // Create data structure for activation vectors & gradients
-                    for (int level = 0; level < LayerSizes.length; level++) {
-                        if (level == 0) {
-                            CurrentActivationVectors.add(InputVectors.get(trainingCaseIndex));
-                        } else {
-                            CurrentActivationVectors.add(new float[LayerSizes[level]]);
-                            CurrentBiasGradientVectors.add(new float[LayerSizes[level]]);
-                            CurrentWeightGradientMatrices.add(new float[LayerSizes[level]][LayerSizes[level - 1]]);
-                        }
+        // Gather training/testing data
+        int startingDataIndex = (miniBatchIndex) * MiniBatchSize;
+        int endingDataIndex = startingDataIndex + MiniBatchSize;
+        IOHelper.ParseCsv(InputVectors, CorrectOutputVectors, DataSetIndicesOrder.subList(startingDataIndex,endingDataIndex));
+
+        // Process each of the minibatch's training/testing cases
+        for (int trainingCaseIndex = 0; trainingCaseIndex < MiniBatchSize; trainingCaseIndex++) {
+            // Reset activation vectors & current gradients
+            CurrentActivationVectors = new ArrayList<>();
+            if (enableGradientDescent) {
+                CurrentBiasGradientVectors = new ArrayList<>();
+                CurrentWeightGradientMatrices = new ArrayList<>();
+            }
+
+            // Create data structure for activation vectors & gradients
+            for (int level = 0; level < LayerSizes.length; level++) {
+                if (level == 0) {
+                    CurrentActivationVectors.add(InputVectors.get(trainingCaseIndex));
+                } else {
+                    CurrentActivationVectors.add(new float[LayerSizes[level]]);
+                    if (enableGradientDescent) {
+                        CurrentBiasGradientVectors.add(new float[LayerSizes[level]]);
+                        CurrentWeightGradientMatrices.add(new float[LayerSizes[level]][LayerSizes[level - 1]]);
                     }
-
-                    // Forward Pass
-                    for (int level = 1; level < LayerSizes.length; level++) {
-                        // Calculate activation vectors
-                        CalculateSigmoid(level);
-                    }
-
-                    // Add the activation vector to the collector for logging
-                    OutputVectorsForMinibatch.add(CurrentActivationVectors.get(LayerSizes.length - 1));
-
-                    // Back Propagation
-                    for (int level = LayerSizes.length - 1; level > 0; level--) {
-                        CalculateOutputError(trainingCaseIndex, level);
-
-                        // Build gradient sums
-                        SetBiasVector(
-                                BiasGradientSumVectors,
-                                level,
-                                MathHelper.AddTwoVectors(
-                                        GetBiasVector(BiasGradientSumVectors, level),
-                                        GetBiasVector(CurrentBiasGradientVectors, level)));
-
-                        SetWeightMatrix(
-                                WeightGradientSumMatrices,
-                                level,
-                                MathHelper.addTwoMatrices(
-                                        GetWeightMatrix(WeightGradientSumMatrices, level),
-                                        GetWeightMatrix(CurrentWeightGradientMatrices, level)));
-
-                    }
-                }
-
-                // Perform Gradient Descent
-                PerformGradientDescent(miniBatchSize);
-
-                // Track output accuracy
-                for (int trainCaseIndex = 0; trainCaseIndex < OutputVectorsForMinibatch.size(); trainCaseIndex++) {
-                    int output = ConvertOneHotVectorToDigit(OutputVectorsForMinibatch.get(trainCaseIndex));
-                    int expectedOutput = ConvertOneHotVectorToDigit(CorrectOutputVectors.get(trainCaseIndex));
-                    OutputResult a = OutputResults.get(expectedOutput);
-                    if (output == expectedOutput) {
-                        a.correctOutputs += 1;
-                    }
-                    a.totalExpectedOutputs += 1;
                 }
             }
 
-            // Print accuracy results
-            int totalCorrect = 0;
-            for (int i = 0; i < LayerSizes[LayerSizes.length - 1]; i++) {
-                System.out.println(i + " = " + OutputResults.get(i) + "\t");
-                totalCorrect += OutputResults.get(i).correctOutputs;
+            // Forward Pass
+            for (int level = 1; level < LayerSizes.length; level++) {
+                // Calculate activation vectors
+                CalculateSigmoid(level);
             }
-            System.out.println("Accuracy = " + totalCorrect + "/" + (miniBatchSize * numberOfMiniBatches));
+
+            // Add the activation vector to the collector for logging
+            OutputVectorsForMinibatch.add(CurrentActivationVectors.get(LayerSizes.length - 1));
+
+            // Back Propagation
+            if (enableGradientDescent) {
+                for (int level = LayerSizes.length - 1; level > 0; level--) {
+                    CalculateOutputError(trainingCaseIndex, level);
+
+                    // Build gradient sums
+                    SetBiasVector(
+                            BiasGradientSumVectors,
+                            level,
+                            MathHelper.AddTwoVectors(
+                                    GetBiasVector(BiasGradientSumVectors, level),
+                                    GetBiasVector(CurrentBiasGradientVectors, level)));
+
+                    SetWeightMatrix(
+                            WeightGradientSumMatrices,
+                            level,
+                            MathHelper.addTwoMatrices(
+                                    GetWeightMatrix(WeightGradientSumMatrices, level),
+                                    GetWeightMatrix(CurrentWeightGradientMatrices, level)));
+
+                }
+            }
+        }
+
+        if (enableGradientDescent) {
+            PerformGradientDescent(MiniBatchSize);
+        }
+
+        // Track output accuracy
+        for (int trainCaseIndex = 0; trainCaseIndex < OutputVectorsForMinibatch.size(); trainCaseIndex++) {
+            int output = ConvertOneHotVectorToDigit(OutputVectorsForMinibatch.get(trainCaseIndex));
+            int expectedOutput = ConvertOneHotVectorToDigit(CorrectOutputVectors.get(trainCaseIndex));
+            OutputResult a = OutputResults.get(expectedOutput);
+            if (output == expectedOutput) {
+                a.correctOutputs += 1;
+            }
+            a.totalExpectedOutputs += 1;
         }
     }
 
@@ -296,6 +333,25 @@ public class NeuralEngine {
 
     //region Data helpers
 
+    public void PrintAccuracyResults() {
+        // Print accuracy results
+        int totalCorrect = 0;
+        for (int i = 0; i < LayerSizes[LayerSizes.length - 1]; i++) {
+            System.out.println(i + " = " + OutputResults.get(i) + "\t");
+            totalCorrect += OutputResults.get(i).correctOutputs;
+        }
+        System.out.println("Accuracy = " + totalCorrect + "/" + (MiniBatchSize * NumberofMiniBatches));
+    }
+
+    /**
+     * Verify minibatches are a valid size
+     */
+    public void CheckMinibatchSize(int miniBatchSize) {
+        if (DataSetIndicesOrder.size() % miniBatchSize != 0) {
+            throw new IllegalArgumentException();
+        }
+    }
+
     /**
      * Hard code the input vectors and the expected outputs
      * @param miniBatchIndex Selects which input vector and expected output vectors to use
@@ -336,13 +392,13 @@ public class NeuralEngine {
     }
 
 
-    private void GenerateRandomWeightsAndBiases(){
+    public void GenerateRandomWeightsAndBiases(){
         CurrentWeightMatrices = new ArrayList<>();
         CurrentBiasVectors = new ArrayList<>();
-        var r = new Random();
+        Random r = new Random();
         long seed = r.nextLong();
-        System.out.println("Seed: " + seed);
-        r.setSeed(seed);
+        Seed = (Seed == null) ? seed : Seed;
+        r.setSeed(Seed);
 
         for (int inputLevel = 0; inputLevel < LayerSizes.length - 1; inputLevel++) {
             // Generate Weights
@@ -361,7 +417,6 @@ public class NeuralEngine {
             }
             CurrentBiasVectors.add(biases);
         }
-        var a = "break";
     }
 
     public static float[] ConvertDigitToOneHotVector(int digit) {
