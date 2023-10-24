@@ -20,7 +20,7 @@ public class IOHelper {
     public static PrintStream SetOutputToFileAndReturnOldStream() throws IOException {
         PrintStream prevSystemOut = System.out;
 
-        PrintStream file = new PrintStream("weights-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd|hh:mm:ssa")) + ".txt");
+        PrintStream file = new PrintStream("weights-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd__hh-mm-ssa")) + ".txt");
         System.setOut(file);
 
         return prevSystemOut;

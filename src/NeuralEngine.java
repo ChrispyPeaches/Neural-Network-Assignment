@@ -100,7 +100,7 @@ public class NeuralEngine {
 
             // Minibatch loop
             for (int miniBatchIndex = 0; miniBatchIndex < NumberofMiniBatches; miniBatchIndex++) {
-                MiniBatchLoop(miniBatchIndex, false);
+                MiniBatchLoop(miniBatchIndex, true);
             }
 
             PrintAccuracyResults();
