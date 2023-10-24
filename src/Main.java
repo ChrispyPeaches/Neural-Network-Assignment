@@ -8,13 +8,14 @@ public class Main {
      */
     public static void main(String[] args) throws IOException {
         // Initialize engine
-        NeuralEngine engine = new NeuralEngine(new int[]{784, 15, 10}, 60000, 10);
+        NeuralEngine engine = new NeuralEngine(new int[]{784, 15, 10}, 600, 10);
 
         // Handle input
         while (true) {
-            switch (IOHelper.GetEngineModeFromInput(engine.Seed != null)) {
-                case TrainWithRandomWeights -> engine.TrainNetwork(3, 30);
+            switch (IOHelper.GetEngineModeFromInput(engine.CurrentBiasVectors.size() == (engine.LayerSizes.length - 1))) {
+                case TrainWithRandomWeights -> engine.TrainNetwork(3, 1);
                 case LoadPreTrainedNetwork -> IOHelper.LoadWeightsFromFile(engine);
+                case TrainingDataAccuracyDisplay -> engine.RunNetwork();
                 case SaveNetworkState -> IOHelper.SaveWeightsToFile(engine);
                 case ExitProgram -> System.exit(0);
             }

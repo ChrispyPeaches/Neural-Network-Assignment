@@ -9,6 +9,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class IOHelper {
+
+    //region Output
+
     /**
      * Set System.out to redirect into an output file
      *
@@ -29,14 +32,94 @@ public class IOHelper {
         }
     }
 
-    public static void PrintVector(float[] biasVector) {
-        for (float bias : biasVector) {
-            System.out.print(bias + ", ");
+    public static void PrintVector(float[] vector) {
+        for (float value : vector) {
+            System.out.print(value + ", ");
         }
-        System.out.print("\n");
     }
 
-    public static void ParseCsv(
+    public static void SaveWeightsToFile(NeuralEngine engine) throws IOException {
+        var oldPrintStream = IOHelper.SetOutputToFileAndReturnOldStream();
+
+        engine.PrintAccuracyResults();
+        System.out.println();
+        System.out.println("Seed: " + engine.Seed);
+        System.out.println();
+        System.out.println("Weights:");
+        for (int levelIndex = 1; levelIndex < engine.LayerSizes.length; levelIndex++) {
+            PrintWeightMatrix(engine.CurrentWeightMatrices, levelIndex);
+            System.out.println("");
+        }
+        System.out.println();
+        System.out.println("Biases:");
+        for (int levelIndex = 1; levelIndex < engine.LayerSizes.length; levelIndex++) {
+            PrintVector(NeuralEngine.GetBiasVector(engine.CurrentBiasVectors, levelIndex));
+            System.out.println("");
+        }
+
+        // Cleanup
+        System.out.flush();
+        System.out.close();
+        System.setOut(oldPrintStream);
+    }
+
+    //endregion
+
+    //region Input
+    public static void LoadWeightsFromFile(NeuralEngine engine) throws IOException {
+        Scanner inputHandler = new Scanner(System.in);
+        File file = null;
+        BufferedReader reader = null;
+        IOHelper.EngineMode selectedMode = null;
+        do {
+            System.out.println("Specify an input file");
+            String fileName = inputHandler.nextLine();
+            try {
+                reader = new BufferedReader(new FileReader(fileName));
+
+                // Retreive weights
+                String textLine = "";
+                do {
+                    textLine = reader.readLine();
+                } while (!Objects.equals(textLine, "Weights:"));
+
+                textLine = reader.readLine();
+                for (int levelIndex = 1; levelIndex < engine.LayerSizes.length; levelIndex++) {
+                    float[][] weights = new float[engine.LayerSizes[levelIndex]][engine.LayerSizes[levelIndex - 1]];
+                    String[] cellValues = textLine.split(",");
+                    for (int rowIndex = 0; rowIndex < weights.length; rowIndex++) {
+                        for (int columnIndex = 0; columnIndex < weights[0].length; columnIndex++) {
+                            weights[rowIndex][columnIndex] =
+                                    Float.parseFloat(cellValues[(rowIndex * weights[0].length) + columnIndex]);
+                        }
+                    }
+                    NeuralEngine.SetWeightMatrix(engine.CurrentWeightMatrices, levelIndex, weights);
+                }
+
+                // Retrieve biases
+                textLine = "";
+                do {
+                    textLine = reader.readLine();
+                } while (!Objects.equals(textLine, "Biases:"));
+
+                textLine = reader.readLine();
+                for (int levelIndex = 1; levelIndex < engine.LayerSizes.length; levelIndex++) {
+                    float[] biases = new float[engine.LayerSizes[levelIndex]];
+                    String[] cellValues = textLine.split(",");
+                    for (int columnIndex = 0; columnIndex < biases.length; columnIndex++) {
+                            biases[columnIndex] =
+                                    Float.parseFloat(cellValues[columnIndex]);
+                        }
+                    NeuralEngine.SetBiasVector(engine.CurrentBiasVectors, levelIndex, biases);
+                }
+            }
+            catch (FileNotFoundException e) {
+                System.out.println("File not found. Try again.");
+            }
+        } while (reader == null);
+    }
+
+    public static void GetInputsFromFile(
             ArrayList<float[]> inputVectorsReference,
             ArrayList<float[]> expectedOutputsReference,
             List<Integer> dataSetIndices) throws IOException {
@@ -73,38 +156,6 @@ public class IOHelper {
             }
             inputVectorsReference.add(inputs);
         }
-    }
-
-    public static void SaveWeightsToFile(NeuralEngine engine) throws IOException {
-        var oldPrintStream = IOHelper.SetOutputToFileAndReturnOldStream();
-
-        System.out.println(engine.Seed);
-        System.out.println();
-        engine.PrintAccuracyResults();
-
-        // Cleanup
-        System.out.flush();
-        System.out.close();
-        System.setOut(oldPrintStream);
-    }
-
-    public static void LoadWeightsFromFile(NeuralEngine engine) throws IOException {
-        Scanner inputHandler = new Scanner(System.in);
-        File file = null;
-        BufferedReader reader = null;
-        IOHelper.EngineMode selectedMode = null;
-        do {
-            System.out.println("Specify an input file");
-            String fileName = inputHandler.nextLine();
-            try {
-                reader = new BufferedReader(new FileReader(fileName));
-                String textLine = reader.readLine();
-                engine.Seed = Long.parseLong(textLine);
-            }
-            catch (FileNotFoundException e) {
-                System.out.println("File not found. Try again.");
-            }
-        } while (reader == null);
     }
 
     public static IOHelper.EngineMode GetEngineModeFromInput(boolean weightsAndBiasesLoaded) {
@@ -196,4 +247,6 @@ public class IOHelper {
             };
         }
     }
+
+    //endregion
 }

@@ -5,9 +5,9 @@ import java.util.*;
 public class NeuralEngine {
     //region Class & instance variables
     /** L sizes */
-    private final int[] LayerSizes;
+    public final int[] LayerSizes;
     /** W matrices for the current mini batch */
-    public ArrayList<float[][]> CurrentWeightMatrices = new ArrayList<>();
+    public ArrayList<float[][]> CurrentWeightMatrices;
     /** b vectors for the current mini batch */
     public ArrayList<float[]> CurrentBiasVectors = new ArrayList<>();
     /** Input, a, and y vectors for the current training set */
@@ -70,7 +70,10 @@ public class NeuralEngine {
         MiniBatchSize = miniBatchSize;
         NumberofMiniBatches = DataSetIndicesOrder.size() / MiniBatchSize;
         Seed = null;
+        CurrentWeightMatrices = new ArrayList<>(LayerSizes.length - 1);
     }
+
+    //region Neural Engine
 
     /**
      * Train the neural network
@@ -84,6 +87,8 @@ public class NeuralEngine {
         Seed = null;
         LearningRate = learningRate;
         GenerateRandomWeightsAndBiases();
+        //UsePregeneratedWeightsAndBiases();
+
 
         // Epoch loop
         for (int epochIndex = 0; epochIndex < numberOfEpochs; epochIndex++) {
@@ -95,7 +100,7 @@ public class NeuralEngine {
 
             // Minibatch loop
             for (int miniBatchIndex = 0; miniBatchIndex < NumberofMiniBatches; miniBatchIndex++) {
-                MiniBatchLoop(miniBatchIndex, true);
+                MiniBatchLoop(miniBatchIndex, false);
             }
 
             PrintAccuracyResults();
@@ -117,6 +122,8 @@ public class NeuralEngine {
         for (int miniBatchIndex = 0; miniBatchIndex < NumberofMiniBatches; miniBatchIndex++) {
             MiniBatchLoop(miniBatchIndex, false);
         }
+
+        PrintAccuracyResults();
     }
 
     private void MiniBatchLoop(int miniBatchIndex, boolean enableGradientDescent) throws IOException {
@@ -139,7 +146,7 @@ public class NeuralEngine {
         // Gather training/testing data
         int startingDataIndex = (miniBatchIndex) * MiniBatchSize;
         int endingDataIndex = startingDataIndex + MiniBatchSize;
-        IOHelper.ParseCsv(InputVectors, CorrectOutputVectors, DataSetIndicesOrder.subList(startingDataIndex,endingDataIndex));
+        IOHelper.GetInputsFromFile(InputVectors, CorrectOutputVectors, DataSetIndicesOrder.subList(startingDataIndex,endingDataIndex));
 
         // Process each of the minibatch's training/testing cases
         for (int trainingCaseIndex = 0; trainingCaseIndex < MiniBatchSize; trainingCaseIndex++) {
@@ -211,6 +218,8 @@ public class NeuralEngine {
             a.totalExpectedOutputs += 1;
         }
     }
+
+    //endregion
 
     //region Neural network engine helpers
 
@@ -337,9 +346,10 @@ public class NeuralEngine {
         // Print accuracy results
         int totalCorrect = 0;
         for (int i = 0; i < LayerSizes[LayerSizes.length - 1]; i++) {
-            System.out.println(i + " = " + OutputResults.get(i) + "\t");
+            System.out.print(i + " = " + OutputResults.get(i) + ",\t");
             totalCorrect += OutputResults.get(i).correctOutputs;
         }
+        System.out.println();
         System.out.println("Accuracy = " + totalCorrect + "/" + (MiniBatchSize * NumberofMiniBatches));
     }
 
@@ -357,6 +367,7 @@ public class NeuralEngine {
      * @param miniBatchIndex Selects which input vector and expected output vectors to use
      */
     private void SetHardCodedTrainingData(int miniBatchIndex) {
+        Seed = Long.parseLong("1");
         InputVectors = new ArrayList<>();
         CorrectOutputVectors = new ArrayList<>();
         // Set minibatch's input & correct output vectors
@@ -376,7 +387,7 @@ public class NeuralEngine {
     /**
      * Hard code the initial weights & biases
      */
-    private void UsePregeneratedWeightsAndBiases() {
+    public void UsePregeneratedWeightsAndBiases() {
         // Weights & Biases for level 0 -> level 1
         CurrentWeightMatrices.add(new float[][]{
                 new float[]{-0.21f, 0.72f, -0.25f, 1},
@@ -474,6 +485,9 @@ public class NeuralEngine {
      * @param newMatrix The target matrix
      */
     public static void SetWeightMatrix(ArrayList<float[][]> weightMatrices, int level, float[][] newMatrix) {
+        while (weightMatrices.size() < level) {
+            weightMatrices.add(null);
+        }
         weightMatrices.set(level - 1, newMatrix);
     }
 
@@ -520,6 +534,9 @@ public class NeuralEngine {
      * @param newVector The target vector
      */
     public static void SetBiasVector(ArrayList<float[]> biasVectors, int level, float[] newVector) {
+        while (biasVectors.size() < level) {
+            biasVectors.add(null);
+        }
         biasVectors.set(level - 1, newVector);
     }
 
