@@ -15,6 +15,9 @@ import java.io.IOException;
  *      - Test with Accuracy results output for both the training and testing datasets
  *      - Save and load a network's state
  *      - Exit the program
+ * - Note:
+ *     - mnist_train.csv and mnist_test.csv files are expected to be in the directory of the program being executed
+ *     - weights files are stored and read from the directory of the program being executed
  */
 
 public class Main {
