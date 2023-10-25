@@ -70,11 +70,22 @@ public class NeuralEngine {
         CurrentWeightMatrices = new ArrayList<>(LayerSizes.length - 1);
     }
 
+    /**
+     * Used to demonstrate the engine's capabilities
+     * @param dataSetType The type of dataset to demonstrate
+     * @param outputType The method for demonstrating the engine
+     */
     public void DemoEngine(IOHelper.DataSetType dataSetType,
                            IOHelper.OutputType outputType) throws IOException {
         RunEngine(-1, 1, false, dataSetType, outputType);
     }
 
+    /**
+     * Used for training the network
+     * @param dataSetType The type of dataset to train on
+     * @param learningRate The learning rate for the network
+     * @param numberOfEpochs The amount of times to run the network through a dataset
+     */
     public void TrainEngine(int learningRate,
                             int numberOfEpochs,
                             IOHelper.DataSetType dataSetType) throws IOException {
@@ -88,6 +99,8 @@ public class NeuralEngine {
      * @param learningRate the learning rate for gradient descent. Ignored if not training
      * @param numberOfEpochs The amount of epochs to perform. Should be 1 if not training
      * @param isTraining If true, train the network, otherwise test the network
+     * @param dataSetType The type of dataset to run through
+     * @param outputType The method for communicating with the user
      */
     private void RunEngine(int learningRate,
                            int numberOfEpochs,
@@ -371,7 +384,7 @@ public class NeuralEngine {
         int dataSetSize = 0;
         switch (dataSetType) {
             case Testing -> dataSetSize = 10000;
-            case Training -> dataSetSize = 60000;
+            case Training -> dataSetSize = 6000;
         }
 
         return dataSetSize;

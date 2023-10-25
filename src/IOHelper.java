@@ -76,7 +76,13 @@ public class IOHelper {
     //endregion
 
     //region Input
-    public static void LoadWeightsFromFile(NeuralEngine engine) throws IOException {
+
+    /**
+     * Prompt the user to give a filename and loads weights and biases from that file into the engine
+     * <p>Note: Largely uses csv formatting</p>
+     * @param engine The neural engine to load the weights and biases into
+     */
+    public static void LoadWeightsAndBiasesFromFile(NeuralEngine engine) throws IOException {
         Scanner inputHandler = new Scanner(System.in);
         File file = null;
         BufferedReader reader = null;
@@ -93,8 +99,8 @@ public class IOHelper {
                     textLine = reader.readLine();
                 } while (!Objects.equals(textLine, "Weights:"));
 
-                textLine = reader.readLine();
                 for (int levelIndex = 1; levelIndex < engine.LayerSizes.length; levelIndex++) {
+                    textLine = reader.readLine();
                     float[][] weights = new float[engine.LayerSizes[levelIndex]][engine.LayerSizes[levelIndex - 1]];
                     String[] cellValues = textLine.split(",");
                     for (int rowIndex = 0; rowIndex < weights.length; rowIndex++) {
@@ -112,8 +118,8 @@ public class IOHelper {
                     textLine = reader.readLine();
                 } while (!Objects.equals(textLine, "Biases:"));
 
-                textLine = reader.readLine();
                 for (int levelIndex = 1; levelIndex < engine.LayerSizes.length; levelIndex++) {
+                    textLine = reader.readLine();
                     float[] biases = new float[engine.LayerSizes[levelIndex]];
                     String[] cellValues = textLine.split(",");
                     for (int columnIndex = 0; columnIndex < biases.length; columnIndex++) {
@@ -129,6 +135,14 @@ public class IOHelper {
         } while (reader == null);
     }
 
+    /**
+     *
+     * @param inputVectorsReference
+     * @param expectedOutputsReference
+     * @param dataSetIndices
+     * @param dataSetToRetrieve
+     * @throws IOException
+     */
     public static void GetInputsFromFile(
             ArrayList<float[]> inputVectorsReference,
             ArrayList<float[]> expectedOutputsReference,
@@ -170,6 +184,15 @@ public class IOHelper {
         }
     }
 
+    /**
+     * <ol>
+     *     <li>Display the options for using the network</li>
+     *     <li>Prompt the user to choose one</li>
+     *     <li>Set the engine to be in that 'mode'</li>
+     * </ol>
+     * @param weightsAndBiasesLoaded Determines which options to show
+     * @return The selected engine 'mode'
+     */
     public static IOHelper.EngineMode GetEngineModeFromInput(boolean weightsAndBiasesLoaded) {
         Scanner inputHandler = new Scanner(System.in);
         IOHelper.EngineMode selectedMode = null;
@@ -218,6 +241,11 @@ public class IOHelper {
         System.out.println();
     }
 
+    /**
+     * Display the options for using the network
+     * (only display a few options if weights and biases aren't loaded)
+     * @param weightsAndBiasesLoaded Determines which options to show
+     */
     public static void PrintInputOptions(boolean weightsAndBiasesLoaded) {
         System.out.println();
         System.out.println("What would you like to do?");
@@ -236,6 +264,10 @@ public class IOHelper {
         }
     }
 
+    /**
+     * The current state of the engine.
+     * This is used for minor behavior changes depending on the engine's state
+     */
     public enum EngineMode {
         @Name(value = "[1] Train the network")
         @Description(value = "Iterate through the 60,000 item MNIST training data set.")
@@ -289,6 +321,9 @@ public class IOHelper {
         }
     }
 
+    /**
+     * The type of data set to use when running the network
+     */
     public enum DataSetType {
         Training,
         Testing

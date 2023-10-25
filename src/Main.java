@@ -24,8 +24,8 @@ public class Main {
         // Handle input
         while (true) {
             switch (IOHelper.GetEngineModeFromInput(engine.CurrentBiasVectors.size() == (engine.LayerSizes.length - 1))) {
-                case TrainWithRandomWeights -> engine.TrainEngine(3, 15, IOHelper.DataSetType.Training);
-                case LoadPreTrainedNetwork -> IOHelper.LoadWeightsFromFile(engine);
+                case TrainWithRandomWeights -> engine.TrainEngine(3, 1, IOHelper.DataSetType.Training);
+                case LoadPreTrainedNetwork -> IOHelper.LoadWeightsAndBiasesFromFile(engine);
                 case TrainingDataAccuracyDisplay -> engine.DemoEngine(IOHelper.DataSetType.Training, IOHelper.OutputType.Accuracy);
                 case TestingDataAccuracyDisplay -> engine.DemoEngine(IOHelper.DataSetType.Testing, IOHelper.OutputType.Accuracy);
                 case RunTestingDataAndShowImages -> engine.DemoEngine(IOHelper.DataSetType.Testing, IOHelper.OutputType.AllImages);
