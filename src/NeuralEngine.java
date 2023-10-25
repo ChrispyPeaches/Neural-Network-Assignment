@@ -96,9 +96,9 @@ public class NeuralEngine {
                            IOHelper.DataSetType dataSetType,
                            IOHelper.OutputType outputType) throws IOException {
         // Minibatch & dataset Setup
-        CheckMinibatchSize();
         DataSetIndicesOrder = MathHelper.RandomizeDatasetIndicesOrder(GetDataSetSize(dataSetType));
         NumberofMiniBatches = DataSetIndicesOrder.size() / MiniBatchSize;
+        CheckMinibatchSize();
 
         // Training Setup
         if (isTraining) {
