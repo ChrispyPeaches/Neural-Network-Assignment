@@ -15,7 +15,7 @@ public class NeuralEngine {
     /** Used to gather output activations for debugging output */
     private ArrayList<float[]> OutputVectorsForMinibatch = new ArrayList<>();
     /** The order that the dataset will be broken into mini batches */
-    private final ArrayList<Integer> DataSetIndicesOrder;
+    private ArrayList<Integer> DataSetIndicesOrder;
     /** The input vectors for the current mini batch */
     private ArrayList<float[]> InputVectors = new ArrayList<>();
 
@@ -66,9 +66,7 @@ public class NeuralEngine {
             int dataSetSize,
             int miniBatchSize) {
         LayerSizes = layerSizes;
-        DataSetIndicesOrder = MathHelper.RandomizeDatasetIndicesOrder(dataSetSize);
         MiniBatchSize = miniBatchSize;
-        NumberofMiniBatches = DataSetIndicesOrder.size() / MiniBatchSize;
         Seed = null;
         CurrentWeightMatrices = new ArrayList<>(LayerSizes.length - 1);
     }
@@ -97,7 +95,10 @@ public class NeuralEngine {
                            boolean isTraining,
                            IOHelper.DataSetType dataSetType,
                            IOHelper.OutputType outputType) throws IOException {
+        // Minibatch & dataset Setup
         CheckMinibatchSize();
+        DataSetIndicesOrder = MathHelper.RandomizeDatasetIndicesOrder(GetDataSetSize(dataSetType));
+        NumberofMiniBatches = DataSetIndicesOrder.size() / MiniBatchSize;
 
         // Training Setup
         if (isTraining) {
@@ -363,6 +364,19 @@ public class NeuralEngine {
     //endregion
 
     //region Data helpers
+
+    /**
+     * Get the size of the data set for the given data set type
+     */
+    private int GetDataSetSize(IOHelper.DataSetType dataSetType) {
+        int dataSetSize = 0;
+        switch (dataSetType) {
+            case Testing -> dataSetSize = 60000;
+            case Training -> dataSetSize = 10000;
+        }
+
+        return dataSetSize;
+    }
 
     /**
      * Track the output accuracy for each neuron in the final layer

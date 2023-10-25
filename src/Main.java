@@ -19,6 +19,8 @@ public class Main {
         // Initialize engine
         NeuralEngine engine = new NeuralEngine(new int[]{784, 15, 10}, 6000, 10);
 
+        // Display initial message
+
         // Handle input
         while (true) {
             switch (IOHelper.GetEngineModeFromInput(engine.CurrentBiasVectors.size() == (engine.LayerSizes.length - 1))) {
