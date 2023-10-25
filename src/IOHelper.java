@@ -63,6 +63,16 @@ public class IOHelper {
         System.setOut(oldPrintStream);
     }
 
+    /**
+     * Keep track of what to show the user as the network runs
+     */
+    public enum OutputType {
+        Accuracy,
+        AllImages,
+        MisclassifiedImages,
+        Training
+    }
+
     //endregion
 
     //region Input
@@ -122,12 +132,14 @@ public class IOHelper {
     public static void GetInputsFromFile(
             ArrayList<float[]> inputVectorsReference,
             ArrayList<float[]> expectedOutputsReference,
-            List<Integer> dataSetIndices) throws IOException {
+            List<Integer> dataSetIndices,
+            DataSetType dataSetToRetrieve) throws IOException {
         File file = null;
         BufferedReader read = null;
         try {
-            read = new BufferedReader(new FileReader("./data_files/mnist_train.csv"));
-
+                read = new BufferedReader(new FileReader( dataSetToRetrieve == DataSetType.Training ?
+                        "./data_files/mnist_train.csv"
+                        : "./data_files/mnist_test.csv"));
         } catch (FileNotFoundException e) {
             System.out.println("File not found");
             throw new RuntimeException(e);
@@ -175,6 +187,35 @@ public class IOHelper {
         } while (selectedMode == null);
 
         return selectedMode;
+    }
+
+    /**
+     * Note: Used gradient from <a href="https://paulbourke.net/dataformats/asciiart/">Paul Bourke's website</a>
+     * @param grayscaleValue The value to convert, which should be on a scale from 0 -> 1
+     * @return  An ascii character representing the density of the grayscale pixel
+     */
+    public static char GrayscaleValueToAsciiChar(float grayscaleValue) {
+        String asiiDensityGradient = " .'`^\",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
+        return asiiDensityGradient.charAt((int) Math.floor(grayscaleValue * (asiiDensityGradient.length() - 1)));
+    }
+
+    /**
+     * Prints an ascii representation for a vector of grayscale pixel values
+     * <p>Note: Assumes inputs are a vector for a 1x1 ratio image</p>
+     * @param inputVector The vector of grayscale pixel values
+     */
+    public static void PrintAsciiCharacter(float[] inputVector) {
+        int imageWidth = (int) Math.floor(Math.sqrt(inputVector.length));
+        for (int rowIndex = 0; rowIndex < inputVector.length; rowIndex++) {
+            // Factor in width of image
+            if (rowIndex % imageWidth == 0) {
+                System.out.println();
+            }
+
+            float grayscaleValue = inputVector[rowIndex];
+            System.out.print(GrayscaleValueToAsciiChar(grayscaleValue));
+        }
+        System.out.println();
     }
 
     public static void PrintInputOptions(boolean weightsAndBiasesLoaded) {
@@ -246,6 +287,11 @@ public class IOHelper {
                 default -> throw new InvalidParameterException();
             };
         }
+    }
+
+    public enum DataSetType {
+        Training,
+        Testing
     }
 
     //endregion
