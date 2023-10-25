@@ -6,9 +6,17 @@ import java.io.IOException;
  * Date Turned In: 10-25-23
  * Assignment #: 2 Pt 2
  * Description:
- * The program allows the user to train & test a 784 by 15 by 10 neural network.
- * - Training uses stochastic gradient descent
+ * The program allows the user to train & test a 784 by 15 by 10 neural network using datasets from MNIST.
+ * - The user has the option to:
+ *      - Train a network using stochastic gradient descent
+ *      - Test with ASCII output
+ *          - For all test cases or
+ *          - Only for misclassified test cases
+ *      - Test with Accuracy results output for both the training and testing datasets
+ *      - Save and load a network's state
+ *      - Exit the program
  */
+
 public class Main {
     /**
      * Program entry point
@@ -30,7 +38,7 @@ public class Main {
                 case TestingDataAccuracyDisplay -> engine.DemoEngine(IOHelper.DataSetType.Testing, IOHelper.OutputType.Accuracy);
                 case RunTestingDataAndShowImages -> engine.DemoEngine(IOHelper.DataSetType.Testing, IOHelper.OutputType.AllImages);
                 case DisplayMisclassifiedTestingImages -> engine.DemoEngine(IOHelper.DataSetType.Testing, IOHelper.OutputType.MisclassifiedImages);
-                case SaveNetworkState -> IOHelper.SaveWeightsToFile(engine);
+                case SaveNetworkState -> IOHelper.SaveWeightsAndBiasesToFile(engine);
                 case ExitProgram -> System.exit(0);
             }
         }

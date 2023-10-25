@@ -66,6 +66,13 @@ public class MathHelper {
         return resultingMatrix;
     }
 
+    /**
+     * Subtracts matrixB from matrixA by deep copying matrixA, then subtracting matrixB from the resulting array
+     *
+     * @param matrixA The minuend matrix
+     * @param matrixB The subtrahend matrix
+     * @return matrixA - matrixB
+     */
     public static float[][] subtractTwoMatrices(float[][] matrixA, float[][] matrixB) {
         // Validate matrixA & matrixB are the same size
         if (matrixA.length != matrixB.length ||

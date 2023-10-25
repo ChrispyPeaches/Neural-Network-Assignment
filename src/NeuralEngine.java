@@ -19,10 +19,17 @@ public class NeuralEngine {
     /** The input vectors for the current mini batch */
     private ArrayList<float[]> InputVectors = new ArrayList<>();
 
+    /**
+     * Tracks accuracy for a network's final layer neurons' outputs
+     */
     private Dictionary<Integer, OutputResult> OutputResults = new Hashtable<>();
 
-    public Long Seed;
+    /** Used for tracking the seed that generated a weight & biases set's original values */
+    public Long Seed = null;
 
+    /**
+     * Tracks accuracy for a network neuron's output
+     */
     public static class OutputResult {
         public int correctOutputs = 0;
         public int totalExpectedOutputs = 0;
@@ -33,7 +40,14 @@ public class NeuralEngine {
         }
     }
 
+    /**
+     * The size for each mini batch
+     */
     public int MiniBatchSize;
+
+    /**
+     * The number of mini batches a data set is broken into
+     */
     public int NumberofMiniBatches;
 
     //region Back Propagation Variables
@@ -56,9 +70,8 @@ public class NeuralEngine {
     //endregion
 
     /**
-     *
-     * @param layerSizes
-     * @param dataSetSize
+     * Initialize the engine
+     * @param layerSizes A list of the sizes for each layer of the network
      * @param miniBatchSize The size for each mini batch
      */
     public NeuralEngine(
@@ -66,7 +79,6 @@ public class NeuralEngine {
             int miniBatchSize) {
         LayerSizes = layerSizes;
         MiniBatchSize = miniBatchSize;
-        Seed = null;
         CurrentWeightMatrices = new ArrayList<>(LayerSizes.length - 1);
     }
 
@@ -152,7 +164,7 @@ public class NeuralEngine {
                 // Gather training/testing data
                 int startingDataIndex = (miniBatchIndex) * MiniBatchSize;
                 int endingDataIndex = startingDataIndex + MiniBatchSize;
-                IOHelper.GetInputsFromFile(
+                IOHelper.GetInputsAndExpectedOutputsFromCsv(
                         InputVectors,
                         CorrectOutputVectors,
                         DataSetIndicesOrder.subList(startingDataIndex, endingDataIndex),

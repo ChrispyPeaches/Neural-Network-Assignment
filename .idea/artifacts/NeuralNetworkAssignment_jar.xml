@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="NeuralNetworkAssignment:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/NeuralNetworkAssignment_jar</output-path>
+    <root id="archive" name="NeuralNetworkAssignment.jar">
+      <element id="module-output" name="NeuralNetworkAssignment" />
+    </root>
+  </artifact>
+</component>

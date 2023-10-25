@@ -26,19 +26,35 @@ public class IOHelper {
         return prevSystemOut;
     }
 
+    /**
+     * Prints out a weight matrix in a CSV-like format
+     * Note: Used for saving a network's weights
+     * @param weightMatrices The list of weight matrices from which to get the matrix
+     * @param level The level of the target weight matrix
+     */
     public static void PrintWeightMatrix(ArrayList<float[][]> weightMatrices, int level) {
         for (int rowIndex = 0; rowIndex < NeuralEngine.GetWeightMatrix(weightMatrices, level).length; rowIndex++) {
             PrintVector(NeuralEngine.GetWeightMatrix(weightMatrices, level)[rowIndex]);
         }
     }
 
+
+    /**
+     * Prints out a vector in a CSV-like format
+     * Note: Used for saving a network's weights & biases
+     * @param vector The vector to print
+     */
     public static void PrintVector(float[] vector) {
         for (float value : vector) {
             System.out.print(value + ", ");
         }
     }
 
-    public static void SaveWeightsToFile(NeuralEngine engine) throws IOException {
+    /**
+     * Save the network's current weight and bias sets to a file in a CSV-like format with section headers
+     * @param engine The NeuralEngine whose weight and bias sets are being saved
+     */
+    public static void SaveWeightsAndBiasesToFile(NeuralEngine engine) throws IOException {
         var oldPrintStream = IOHelper.SetOutputToFileAndReturnOldStream();
 
         engine.PrintAccuracyResults();
@@ -136,14 +152,14 @@ public class IOHelper {
     }
 
     /**
-     *
-     * @param inputVectorsReference
-     * @param expectedOutputsReference
-     * @param dataSetIndices
-     * @param dataSetToRetrieve
-     * @throws IOException
+     * Retrieve the input values from CSV files using the same format as
+     * the MNIST testing and training datasets used in this assignment
+     * @param inputVectorsReference Where the input vectors are stored after being retrieved
+     * @param expectedOutputsReference Where the input vectors are stored after being retrieved
+     * @param dataSetIndices The indices of the data set items to retrieve
+     * @param dataSetToRetrieve The type of data set being retrieved from
      */
-    public static void GetInputsFromFile(
+    public static void GetInputsAndExpectedOutputsFromCsv(
             ArrayList<float[]> inputVectorsReference,
             ArrayList<float[]> expectedOutputsReference,
             List<Integer> dataSetIndices,
@@ -152,8 +168,8 @@ public class IOHelper {
         BufferedReader read = null;
         try {
                 read = new BufferedReader(new FileReader( dataSetToRetrieve == DataSetType.Training ?
-                        "./data_files/mnist_train.csv"
-                        : "./data_files/mnist_test.csv"));
+                        "./mnist_train.csv"
+                        : "./mnist_test.csv"));
         } catch (FileNotFoundException e) {
             System.out.println("File not found");
             throw new RuntimeException(e);
