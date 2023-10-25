@@ -384,7 +384,7 @@ public class NeuralEngine {
         int dataSetSize = 0;
         switch (dataSetType) {
             case Testing -> dataSetSize = 10000;
-            case Training -> dataSetSize = 6000;
+            case Training -> dataSetSize = 60000;
         }
 
         return dataSetSize;
