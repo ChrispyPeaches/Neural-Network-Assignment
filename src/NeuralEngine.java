@@ -63,7 +63,6 @@ public class NeuralEngine {
      */
     public NeuralEngine(
             int[] layerSizes,
-            int dataSetSize,
             int miniBatchSize) {
         LayerSizes = layerSizes;
         MiniBatchSize = miniBatchSize;
@@ -371,8 +370,8 @@ public class NeuralEngine {
     private int GetDataSetSize(IOHelper.DataSetType dataSetType) {
         int dataSetSize = 0;
         switch (dataSetType) {
-            case Testing -> dataSetSize = 60000;
-            case Training -> dataSetSize = 10000;
+            case Testing -> dataSetSize = 10000;
+            case Training -> dataSetSize = 60000;
         }
 
         return dataSetSize;
