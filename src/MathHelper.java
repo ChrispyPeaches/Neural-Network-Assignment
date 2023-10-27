@@ -10,7 +10,7 @@ public class MathHelper {
      */
     public static ArrayList<Integer> RandomizeDatasetIndicesOrder(int dataSetSize) {
         ArrayList<Integer> indices = new ArrayList<Integer>();
-        for (int i = 1; i <= dataSetSize; i++) {
+        for (int i = 0; i < dataSetSize; i++) {
             indices.add(i);
         }
         Collections.shuffle(indices);

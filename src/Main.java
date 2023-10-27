@@ -28,14 +28,14 @@ public class Main {
      */
     public static void main(String[] args) throws IOException {
         // Initialize engine
-        NeuralEngine engine = new NeuralEngine(new int[]{784, 15, 10}, 10);
+        NeuralEngine engine = new NeuralEngine(new int[]{784, 1054, 532, 10}, 10);
 
         // Display initial message
 
         // Handle input
         while (true) {
             switch (IOHelper.GetEngineModeFromInput(engine.CurrentBiasVectors.size() == (engine.LayerSizes.length - 1))) {
-                case TrainWithRandomWeights -> engine.TrainEngine(3, 1, IOHelper.DataSetType.Training);
+                case TrainWithRandomWeights -> engine.TrainEngine(3, 5, IOHelper.DataSetType.Training);
                 case LoadPreTrainedNetwork -> IOHelper.LoadWeightsAndBiasesFromFile(engine);
                 case TrainingDataAccuracyDisplay -> engine.DemoEngine(IOHelper.DataSetType.Training, IOHelper.OutputType.Accuracy);
                 case TestingDataAccuracyDisplay -> engine.DemoEngine(IOHelper.DataSetType.Testing, IOHelper.OutputType.Accuracy);

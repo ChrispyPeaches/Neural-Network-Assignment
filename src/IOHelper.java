@@ -156,13 +156,11 @@ public class IOHelper {
      * the MNIST testing and training datasets used in this assignment
      * @param inputVectorsReference Where the input vectors are stored after being retrieved
      * @param expectedOutputsReference Where the input vectors are stored after being retrieved
-     * @param dataSetIndices The indices of the data set items to retrieve
      * @param dataSetToRetrieve The type of data set being retrieved from
      */
     public static void GetInputsAndExpectedOutputsFromCsv(
             ArrayList<float[]> inputVectorsReference,
             ArrayList<float[]> expectedOutputsReference,
-            List<Integer> dataSetIndices,
             DataSetType dataSetToRetrieve) throws IOException {
         File file = null;
         BufferedReader read = null;
@@ -175,23 +173,14 @@ public class IOHelper {
             throw new RuntimeException(e);
         }
 
-        // Sort the indices to avoid resetting the file reading stream
-        Collections.sort(dataSetIndices);
-
-        int currentFileLine = 0;
-        for (Integer dataSetIndex : dataSetIndices) {
-            int dataSetIndexLineNumber = dataSetIndex;
-            String textLine = "";
-            // Grab the value on the desired line
-            for (int j = currentFileLine; j < dataSetIndexLineNumber; j++) {
-                textLine = read.readLine();
-                currentFileLine += 1;
-            }
+        for (int dataSetIndex = 0; dataSetIndex < NeuralEngine.GetDataSetSize(dataSetToRetrieve); dataSetIndex++) {
+            String textLine = read.readLine();
 
             // Gather input and expected output values from the line
             String[] cellValues = textLine.split(",");
             expectedOutputsReference.add(
                     NeuralEngine.ConvertDigitToOneHotVector(Integer.parseInt(cellValues[0])));
+
             float[] inputs = new float[cellValues.length - 1];
             for (int j = 1; j < cellValues.length; j++) {
                 inputs[j - 1] = Float.parseFloat(cellValues[j]) / 255;

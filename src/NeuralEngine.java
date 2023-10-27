@@ -131,6 +131,13 @@ public class NeuralEngine {
             GenerateRandomWeightsAndBiases();
         }
 
+        // Gather training/testing data
+        IOHelper.GetInputsAndExpectedOutputsFromCsv(
+                InputVectors,
+                CorrectOutputVectors,
+                dataSetType);
+
+
         // Epoch loop
         for (int epochIndex = 0; epochIndex < numberOfEpochs; epochIndex++) {
             if (isTraining) {
@@ -144,11 +151,10 @@ public class NeuralEngine {
             }
 
             for (int miniBatchIndex = 0; miniBatchIndex < NumberofMiniBatches; miniBatchIndex++) {
-                // Reset necessary variables
-                OutputVectorsForMinibatch = new ArrayList<>();
-                InputVectors = new ArrayList<>();
-                CorrectOutputVectors = new ArrayList<>();
-
+                if (miniBatchIndex != 0) {
+                    System.out.print("\r");
+                }
+                System.out.print("Running minibatch: " + miniBatchIndex);
                 // Setup for gradient descent
                 if (isTraining) {
                     BiasGradientSumVectors = new ArrayList<>();
@@ -161,19 +167,13 @@ public class NeuralEngine {
                     }
                 }
 
-                // Gather training/testing data
-                int startingDataIndex = (miniBatchIndex) * MiniBatchSize;
-                int endingDataIndex = startingDataIndex + MiniBatchSize;
-                IOHelper.GetInputsAndExpectedOutputsFromCsv(
-                        InputVectors,
-                        CorrectOutputVectors,
-                        DataSetIndicesOrder.subList(startingDataIndex, endingDataIndex),
-                        dataSetType);
-
                 // Process each of the minibatch's training/testing cases
                 for (int trainingCaseIndex = 0; trainingCaseIndex < MiniBatchSize; trainingCaseIndex++) {
+
                     // Setup activation vectors & current gradients
                     CurrentActivationVectors = new ArrayList<>();
+
+                    /** Input, a, and y vectors for the current training set */
                     if (isTraining) {
                         CurrentBiasGradientVectors = new ArrayList<>();
                         CurrentWeightGradientMatrices = new ArrayList<>();
@@ -182,7 +182,10 @@ public class NeuralEngine {
                     // Create data structure for activation vectors & gradients
                     for (int level = 0; level < LayerSizes.length; level++) {
                         if (level == 0) {
-                            CurrentActivationVectors.add(InputVectors.get(trainingCaseIndex));
+                            CurrentActivationVectors.add(GetInputOrExpectedOutputVector(
+                                    InputVectors,
+                                    miniBatchIndex,
+                                    trainingCaseIndex));
                         } else {
                             CurrentActivationVectors.add(new float[LayerSizes[level]]);
                             if (isTraining) {
@@ -195,15 +198,15 @@ public class NeuralEngine {
                     // Forward Pass
                     for (int level = 1; level < LayerSizes.length; level++) {
                         // Calculate activation vectors
-                        CalculateSigmoid(level);
+                        CalculateSigmoid(CurrentActivationVectors, level);
                     }
 
                     if (isTraining) {
-                        PerformBackPropagation(trainingCaseIndex);
+                        PerformBackPropagation(miniBatchIndex, trainingCaseIndex);
                     }
 
                     if (outputType == IOHelper.OutputType.Accuracy || outputType == IOHelper.OutputType.Training) {
-                        TrackOutputAccuracy(trainingCaseIndex);
+                        TrackOutputAccuracy(miniBatchIndex, trainingCaseIndex);
                     }
 
                     // Display Ascii image if necessary
@@ -212,16 +215,25 @@ public class NeuralEngine {
                         // Get expected and actual output for the network
                         Scanner inputHandler = new Scanner(System.in);
                         int output = ConvertOneHotVectorToDigit(GetOutputVector(LayerSizes.length - 1));
-                        int expectedOutput = ConvertOneHotVectorToDigit(CorrectOutputVectors.get(trainingCaseIndex));
+                        int expectedOutput =
+                                ConvertOneHotVectorToDigit(
+                                        GetInputOrExpectedOutputVector(
+                                                CorrectOutputVectors,
+                                                miniBatchIndex,
+                                                trainingCaseIndex));
 
                         // Handle output to user
                         if (outputType == IOHelper.OutputType.AllImages || output != expectedOutput) {
                             System.out.println(
                                     "Test case #" + (miniBatchIndex * MiniBatchSize + trainingCaseIndex) +
-                                    ": Correct classification = " + expectedOutput +
-                                    " Network Output = " + output +
-                                    ((output == expectedOutput) ? "Correct." : "Incorrect."));
-                            IOHelper.PrintAsciiCharacter(GetInputVector(1));
+                                            ": Correct classification = " + expectedOutput +
+                                            " Network Output = " + output +
+                                            ((output == expectedOutput) ? " Correct." : " Incorrect."));
+                            IOHelper.PrintAsciiCharacter(
+                                    GetInputOrExpectedOutputVector(
+                                            InputVectors,
+                                            miniBatchIndex,
+                                            trainingCaseIndex));
                             System.out.println("Enter 1 to continue. All other values return to main menu");
                             String inputValue = inputHandler.nextLine();
                             if (!inputValue.equals("1")) {
@@ -248,14 +260,14 @@ public class NeuralEngine {
      * Calculate the z value for each neuron in the target level
      * @param level The target level
      */
-    private void CalculateZVector(int level) {
+    private void CalculateZVector(ArrayList<float[]> CurrentActivationVectors, int level) {
         // For each neuron
         for (int neuronIndex = 0; neuronIndex < GetWeightMatrix(CurrentWeightMatrices, level).length; neuronIndex++) {
             // W * X
             GetOutputVector(level)[neuronIndex] =
                     MathHelper.calculateDotProduct(
                             GetWeightRowVector(CurrentWeightMatrices, level, neuronIndex),
-                            GetInputVector(level));
+                            GetActivationVector(CurrentActivationVectors, level - 1));
             // + b
             GetOutputVector(level)[neuronIndex] += GetBiasVector(CurrentBiasVectors, level)[neuronIndex];
         }
@@ -265,8 +277,8 @@ public class NeuralEngine {
      * Use each neuron's z value to calculate the sigmoid value for each neuron in the target level
      * @param level The target level
      */
-    private void CalculateSigmoid(int level) {
-        CalculateZVector(level);
+    private void CalculateSigmoid(ArrayList<float[]> CurrentActivationVectors, int level) {
+        CalculateZVector(CurrentActivationVectors, level);
 
         // Perform the sigmoid function on each value in the vector
         for (int index = 0; index < GetOutputVector(level).length; index++) {
@@ -279,7 +291,7 @@ public class NeuralEngine {
      * @param trainingCaseIndex The training case to calculate error for
      * @param level The target level
      */
-    private void CalculateOutputError(int trainingCaseIndex, int level) {
+    private void CalculateOutputError(int miniBatchIndex, int trainingCaseIndex, int level) {
         if (level > LayerSizes.length - 1) {
             throw new InvalidParameterException();
         }
@@ -292,7 +304,11 @@ public class NeuralEngine {
                 // where j = neuronIndex, L = level
                 // (a - y) * a * (1 - a)
                 GetBiasVector(CurrentBiasGradientVectors, level)[neuronIndex] =
-                        (GetOutputVector(level)[neuronIndex] - CorrectOutputVectors.get(trainingCaseIndex)[neuronIndex])
+                        (GetOutputVector(level)[neuronIndex]
+                                - GetInputOrExpectedOutputVector(
+                                        CorrectOutputVectors,
+                                        miniBatchIndex,
+                                        trainingCaseIndex)[neuronIndex])
                                 * GetOutputVector(level)[neuronIndex]
                                 * (1 - GetOutputVector(level)[neuronIndex]);
             }
@@ -329,9 +345,9 @@ public class NeuralEngine {
      * Calculate error in current training case & contribute it to the gradient sums
      * @param trainingCaseIndex The current training case used to retrieve the expected outputs
      */
-    private void PerformBackPropagation(int trainingCaseIndex) {
+    private void PerformBackPropagation(int miniBatchIndex, int trainingCaseIndex) {
         for (int level = LayerSizes.length - 1; level > 0; level--) {
-            CalculateOutputError(trainingCaseIndex, level);
+            CalculateOutputError(miniBatchIndex, trainingCaseIndex, level);
 
             // Build gradient sums
             SetBiasVector(
@@ -392,7 +408,7 @@ public class NeuralEngine {
     /**
      * Get the size of the data set for the given data set type
      */
-    private int GetDataSetSize(IOHelper.DataSetType dataSetType) {
+    public static int GetDataSetSize(IOHelper.DataSetType dataSetType) {
         int dataSetSize = 0;
         switch (dataSetType) {
             case Testing -> dataSetSize = 10000;
@@ -405,9 +421,13 @@ public class NeuralEngine {
     /**
      * Track the output accuracy for each neuron in the final layer
      */
-    public void TrackOutputAccuracy(int trainCaseIndex) {
+    public void TrackOutputAccuracy(int miniBatchIndex, int trainingCaseIndex) {
             int output = ConvertOneHotVectorToDigit(GetOutputVector(LayerSizes.length - 1));
-            int expectedOutput = ConvertOneHotVectorToDigit(CorrectOutputVectors.get(trainCaseIndex));
+            int expectedOutput = ConvertOneHotVectorToDigit(
+                                        GetInputOrExpectedOutputVector(
+                                                CorrectOutputVectors,
+                                                miniBatchIndex,
+                                                trainingCaseIndex));
             OutputResult a = OutputResults.get(expectedOutput);
             if (output == expectedOutput) {
                 a.correctOutputs += 1;
@@ -497,11 +517,19 @@ public class NeuralEngine {
 
     /**
      * Get the current input vector
+     * <p>Note: If miniBatchIndex & trainingCaseIndex aren't available, pass -1 for them to be ignored</p>
      * @param level The target level
      * @return The input vector at the target level
      */
-    private float[] GetInputVector(int level) {
-        return CurrentActivationVectors.get(level - 1);
+    private float[] GetActivationVector(ArrayList<float[]> activationVectors, int level) {
+            return activationVectors.get(level);
+    }
+
+    private float[] GetInputOrExpectedOutputVector(ArrayList<float[]> inputOrExpectedOutputVectors,
+                                                   int miniBatchIndex,
+                                                   int trainingCaseIndex) {
+            return inputOrExpectedOutputVectors
+                    .get(DataSetIndicesOrder.get((miniBatchIndex * MiniBatchSize) + trainingCaseIndex));
     }
 
     /**
