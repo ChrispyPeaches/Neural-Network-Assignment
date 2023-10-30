@@ -28,7 +28,7 @@ public class Main {
      */
     public static void main(String[] args) throws IOException {
         // Initialize engine
-        NeuralEngine engine = new NeuralEngine(new int[]{784, 1054, 532, 10}, 10);
+        NeuralEngine engine = new NeuralEngine(new int[]{784, 100, 10}, 10);
 
         // Display initial message
 

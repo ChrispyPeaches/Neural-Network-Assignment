@@ -154,7 +154,7 @@ public class NeuralEngine {
                 if (miniBatchIndex != 0) {
                     System.out.print("\r");
                 }
-                System.out.print("Running minibatch: " + miniBatchIndex);
+                System.out.print("Running minibatch: " + miniBatchIndex + "/" + NumberofMiniBatches);
                 // Setup for gradient descent
                 if (isTraining) {
                     BiasGradientSumVectors = new ArrayList<>();
