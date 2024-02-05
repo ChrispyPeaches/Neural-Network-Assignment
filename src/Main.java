@@ -2,9 +2,6 @@ import java.io.IOException;
 
 /**
  * Name: Chris Perry
- * Student #: 10327025
- * Date Turned In: 10-25-23
- * Assignment #: 2 Pt 2
  * Description:
  * The program allows the user to train & test a 784 by 15 by 10 neural network using datasets from MNIST.
  * - The user has the option to:
